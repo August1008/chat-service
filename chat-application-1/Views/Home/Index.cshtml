@@ -1,0 +1,68 @@
+﻿@{
+    ViewData["Title"] = "Home Page";
+}
+
+<div class="text-center">
+    <h1>Chat Application</h1>
+    <div class="mb-3">
+        <label class="form-label">Username</label>
+        <input class="form-control" type="text" id="userInput" placeholder="Enter your name">
+        <br><br>
+            <label class="form-label">Message</label>
+            <textarea class="form-control" id="messageInput" placeholder="Enter a message"></textarea>
+        <br><br>
+        <button class="btn btn-primary" onclick="sendMessage()">Send</button>
+        <button class="btn btn-danger" onclick="clearMessage()">Clear</button>
+    </div>
+    <hr>
+    <div id="messagesList"></div>
+
+    <script>
+        const items = { ...localStorage };
+        Object.keys(items).map(e => {
+            console.log(items[e]);
+            const msgDiv = document.createElement("div");
+            msgDiv.textContent = items[e];
+            document.getElementById("messagesList").appendChild(msgDiv);
+        });
+        console.log(items);
+        const connection = new signalR.HubConnectionBuilder()
+            .withUrl("/chat")
+            .build();
+
+        connection.on("ReceiveMessage", (user, message) => {
+            const msgDiv = document.createElement("div");
+            msgDiv.textContent = `${user}: ${message}`;
+            document.getElementById("messagesList").appendChild(msgDiv);
+            const random_id = Date.now();
+            console.log(random_id);
+            localStorage.setItem(random_id, `${user}: ${message}`);
+            //console.log(localStorage.getItem(random_id);
+        });
+
+        async function start() {
+            try {
+                await connection.start();
+                console.log("SignalR Connected.");
+            } catch (err) {
+                console.error(err);
+                setTimeout(start, 5000); // Retry
+            }
+        }
+
+        async function sendMessage() {
+            const user = document.getElementById("userInput").value;
+            const message = document.getElementById("messageInput").value;
+            if (user && message) {
+                await connection.invoke("SendMessageAsync", user, message);
+            }
+        }
+
+        const clearMessage = async () => {
+            localStorage.clear();
+            document.getElementById("messagesList").innerHTML = '';
+        }
+
+        start();
+    </script>
+</div>
